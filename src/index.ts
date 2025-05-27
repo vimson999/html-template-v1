@@ -1,10 +1,12 @@
 import $ from 'jquery';
-import { AddFieldUnknownError, bitable, ITable } from '@lark-base-open/js-sdk';
+import { bitable, ITable } from '@lark-base-open/js-sdk';
 import './index.scss';
+import { getTable,FormValues,getFormValuesAndValidate } from './helper';
+
 // import './locales/i18n'; // 开启国际化，详情请看README.md
 
 
-$(async function () {
+$( async function () {
   const [tableList, selection] = await Promise.all([bitable.base.getTableMetaList(), bitable.base.getSelection()]);
   const optionsHtml = tableList.map(table => {
     return `<option value="${table.id}">${table.name}</option>`;
@@ -14,118 +16,106 @@ $(async function () {
   $('#addRecord').on('click', async function () {
     console.log('按钮被点击');
 
-    const values = getFormValuesAndValidate();
-    if (!values) return;
+    const input_values = getFormValuesAndValidate();
+    if (!input_values) return;
 
-    const title = ''
-    const radioCreate = (document.getElementById('radioCreate') as HTMLInputElement)?.checked;
-    const intentSelect = (document.getElementById('intentSelect') as HTMLSelectElement)?.value;
-    const randomSuffix = Date.now();
+    const result_data = await getTableData(input_values);
 
-    console.log('radioCreate is ', radioCreate);
+    const title = 'test'
+    let table = await getTable(title);
+    console.log('table is ', table.getName);
 
-    let table = await getTable();
     await fillDataTable(table);
   });
 
-  
-  async function getTable() {
-    const title = ''
-    const radioCreate = (document.getElementById('radioCreate') as HTMLInputElement)?.checked;
-    const intentSelect = (document.getElementById('intentSelect') as HTMLSelectElement)?.value;
-    const randomSuffix = Date.now();
 
-    console.log('radioCreate is ', radioCreate);
-    let table;
-    if (radioCreate) {
-      const tableName = `【${title}】_${randomSuffix}`;
-      const addResult = await bitable.base.addTable({
-        name: tableName,
-        fields: getDefaultFields()
-      });
+  async function getTableData(input_values : FormValues) {
+    const intentSelect = input_values.intentSelect;
+    const inputValue = input_values.inputValue;
+    const apiKey = input_values.apiKey;
 
-      table = await bitable.base.getTableById(addResult.tableId);
-    }else {
-      const tableId = $('#tableSelect').val();
-      table = await bitable.base.getTableById(tableId as string);
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    const base_url = '/v1';
+    
+
+    let result_data;
+    switch (intentSelect) {
+      case 'get_caption':
+        result_data = await getVideoBasic(base_url, inputValue, headers);
+        break;
+      case 'analyze_trend':
+        result_data = await getVideoTrend(base_url, inputValue, headers);
+        break;
+      case 'get_comments':
+        result_data = await getVideoComment(base_url, inputValue, headers);
+        break;
+      case 'keyword_search':
+        result_data = await getKeywordsSearch(base_url, inputValue, headers);
+        break;
+      case 'get_author':  // 注意：这里有两个相同value需要区分
+        result_data = await getKOLBasic(base_url, inputValue, headers);
+        break;
+      case 'get_author_works':  // 建议拆分value
+        result_data = await getKOLPosts(base_url, inputValue, headers);
+        break;
+      case 'analyze_author':
+        result_data = await getKOLTrends(base_url, inputValue, headers);
+        break;
+      default:
+        alert('未选择获取的数据');
+        return null;
     }
 
-    return table;
+    return result_data;
   }
+
+
+
   async function fillDataTable(table: ITable) {
-    await table.addRecord({
-      fields: {
-        a: "a1",
-        b: "b1",
-        c: "c1"
-      }
-    });
+    // await table.addRecord({
+    //   fields: {
+    //     a: "a1",
+    //     b: "b1",
+    //     c: "c1"
+    //   }
+    // });
+
+    console.log('fill done ', table);
+
   }
 
-  function getDefaultFields() {
-    return [
-      { name: "a", type: 1 },
-      { name: "b", type: 1 },
-      { name: "c", type: 1 }
-    ];
-  }
 
-  function getVideoBasic() {
+  async function getVideoBasic(base_url: string,inputValue : string, headers : any ) {
     return null;
   }
 
-  function getVideoTrend() {
+  async function getVideoTrend(base_url: string,inputValue : string, headers : any) {
     return null;
   }
 
-  function getVideoComment() {
+  async function getVideoComment(base_url: string,inputValue : string, headers : any) {
     return null;
   }
 
-  function getKeywordsSearch() {
+  async function getKeywordsSearch(base_url: string,inputValue : string, headers : any) {
     return null;
   }
 
-  function getKOLBasic() {
+  async function getKOLBasic(base_url: string,inputValue : string, headers : any) {
     return null;
   }
 
-  function getKOLPosts() {
+  async function getKOLPosts(base_url: string,inputValue : string, headers : any) {
     return null;
   }
 
-  function getKOLTrends() {
+  async function getKOLTrends(base_url: string,inputValue : string, headers : any) {
     return null;
   }
 
-  function getFormValuesAndValidate() {
-    const inputValue = (document.getElementById('inputValue') as HTMLInputElement)?.value.trim();
-    const intentSelect = (document.getElementById('intentSelect') as HTMLSelectElement)?.value;
-    const radioCreate = (document.getElementById('radioCreate') as HTMLInputElement)?.checked;
-    const radioSelect = (document.getElementById('radioSelect') as HTMLInputElement)?.checked;
-    const tableSelect = (document.getElementById('tableSelect') as HTMLSelectElement)?.value;
-    const apiKey = (document.getElementById('apiKey') as HTMLInputElement)?.value.trim();
   
-    if (!inputValue) {
-      alert('请输入地址内容');
-      return null;
-    }
-    if (!intentSelect) {
-      alert('请选择获取的数据');
-      return null;
-    }
-    if (!radioCreate && !radioSelect) {
-      alert('请选择表格操作方式');
-      return null;
-    }
-    if (radioSelect && !tableSelect) {
-      alert('请选择已有表格');
-      return null;
-    }
-    if (!apiKey) {
-      alert('请输入API Key');
-      return null;
-    }
-    return { inputValue, intentSelect, radioCreate, radioSelect, tableSelect, apiKey };
-  }
 });
+
