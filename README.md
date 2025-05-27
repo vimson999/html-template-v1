@@ -92,3 +92,9 @@ For example, configure internationalization for the placeholder attribute of inp
 3：页面上有一个输入框，用户可以输入调用api的 key
 4：页面上有一个 Select Table，让用户选择数据写入的 table 
 5：页面上有一个按钮，用户点击按钮，插件会根据用户选择的意图，调用对应的api，将结果保存到表格中,每种数据的返回格式不同，需要根据返回格式进行解析，将数据保存到表格中
+
+
+https://ycn0x2weafez.feishu.cn/base/QJzUb6WtzaAnXWs4m35cI5tEn3f?table=tblNMlmDmdGgMmvj&view=vewryBE8gE
+
+npm i
+npm run dev
