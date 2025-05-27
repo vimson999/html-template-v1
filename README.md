@@ -82,3 +82,13 @@ For example, configure internationalization for the placeholder attribute of inp
 <input data-i18n="[placeholder]title"/>
 
 ```
+
+
+
+现在我有一个插件需求
+1：允许用户选择当前操作意图，
+    下拉框里填充 获取视频文案、分析短视频数据走势、获取视频评论、关键字搜索、获取视频作者、分析视频作者数据
+2：页面上有一个输入框，用户可以输入视频链接、作者链接、搜索词
+3：页面上有一个输入框，用户可以输入调用api的 key
+4：页面上有一个 Select Table，让用户选择数据写入的 table 
+5：页面上有一个按钮，用户点击按钮，插件会根据用户选择的意图，调用对应的api，将结果保存到表格中,每种数据的返回格式不同，需要根据返回格式进行解析，将数据保存到表格中
