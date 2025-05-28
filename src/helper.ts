@@ -37,23 +37,23 @@ export async function getTable(title: string,intentSelect:string,platform: Media
       { name: "c", type: 1 }
     ];
 
-    switch (intentSelect) {
-      case 'get_comments':
-        fields = [
-          { name: "昵称", type: 1 },
-          { name: "评论时间", type: 1 },
-          { name: "内容", type: 1 },
-          { name: "赞", type: 1 },
-          { name: "所在地", type: 1 },
-          { name: "地址", type: 1 },
-          { name: "user_id", type: 1 }
-        ];
-        break;
-      case 'keyword_search':
-        break;
-      default:
-        alert('未选择获取的数据');
-    }
+    // switch (intentSelect) {
+    //   case 'get_comments':
+    //     fields = [
+    //       { name: "昵称", type: 1 },
+    //       { name: "评论时间", type: 1 },
+    //       { name: "内容", type: 1 },
+    //       { name: "赞", type: 1 },
+    //       { name: "所在地", type: 1 },
+    //       { name: "地址", type: 1 },
+    //       { name: "user_id", type: 1 }
+    //     ];
+    //     break;
+    //   case 'keyword_search':
+    //     break;
+    //   default:
+    //     alert('未选择获取的数据');
+    // }
     
     return fields;
   }

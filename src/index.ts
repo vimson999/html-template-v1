@@ -1,5 +1,5 @@
 import $ from 'jquery';
-import { bitable, ITable } from '@lark-base-open/js-sdk';
+import { bitable, ITable, IRecordValue, IFieldMeta } from '@lark-base-open/js-sdk'; // 确保导入了 IFieldMeta 和 IRecordValue
 import './index.scss';
 import { getCleanUrl, getTable, FormValues, getFormValuesAndValidate, convertDYComment ,convertXHSComment,identifyPlatform,MediaPlatform } from './helper';
 import { CommentSchema } from './schema';
@@ -82,42 +82,116 @@ $(async function () {
 
 
 
-  async function fillDataTable(table: ITable,result_data: any) {
-    // await table.addRecord({
-    //   fields: {
-    //     a: "a1",
-    //     b: "b1",
-    //     c: "c1"
-    //   }
-    // });
-    if (!result_data) {
-      console.error('result_data is empty');
+
+  async function fillDataTable(table: ITable, result_data: CommentSchema[]) {
+    const tableName = await table.getName();
+  
+    if (!result_data || !Array.isArray(result_data) || result_data.length === 0) {
+      console.warn(`向表格 "${tableName}" 填充的数据 (result_data) 为空或格式不正确。`);
+      // window.LarkDocs?.Toast?.warning('没有数据可以写入表格。');
       return;
     }
+  
+    // window.LarkDocs?.Toast?.info(`准备向表格 "${tableName}" 批量写入 ${result_data.length} 条数据...`);
+    console.log(`准备向表格 "${tableName}" 批量写入 ${result_data.length} 条数据 (使用字段名)...`);
+    
+    try {
+      // 1. 获取表格的字段元数据
+      const fieldsMeta = await table.getFieldList();
+      console.log('fieldsMeta is ', fieldsMeta);
+      // 2. 准备要批量添加的记录数据 (直接是字段名 -> 值的对象)
 
-    if (Array.isArray(result_data)) {
-      console.log('Table fields:', await table.getFieldList());
-      
-      for (const item of result_data) {
+      // const cell = await table.getFieldById('fldiHlcFOw');
+      // console.log('cell is ', cell);
+
+      // const keys = fieldsMeta.keys();
+      // keys.forEach(key => {
+      //   console.log('key is ', key);
+      // });
+
+      const cell0 = fieldsMeta[0];
+      console.log('cell0 is ', cell0);
+      // fldiHlcFOw
+
+      const record = { fidleds : {} };
+      await table.addRecord(record);
+    }catch (error) {
+      console.log('error is ', error);
+    }
+    
+
+    return;
+
+    try {
+      const itemPropertyToTableFieldNameMap: { [K in keyof CommentSchema]?: string } = {
+        nick_name: '昵称',
+        create_time: '评论时间',
+        text: '内容',
+        ip_label: 'IP属地',
+        user_url: '用户主页',
+        user_id: '用户ID',
+        digg_count: '点赞数'
+      };
+  
+      // (可选的字段名校验逻辑可以保留)
+  
+      // 2. 准备要批量添加的记录数据 (直接是字段名 -> 值的对象)
+      // 修改点在这里：map 的结果直接是 IRecordValue，而不是 { fields: IRecordValue }
+      const recordsToCreate: IRecordValue[] = result_data.map(item => { // <--- 修改类型和返回值
+        const fieldsForRecord: IRecordValue = {fields: {}};
+        for (const itemKey in itemPropertyToTableFieldNameMap) {
+          const tableFieldName = itemPropertyToTableFieldNameMap[itemKey as keyof CommentSchema];
+          if (tableFieldName && item.hasOwnProperty(itemKey as keyof CommentSchema)) {
+            // @ts-ignore
+            fieldsForRecord[tableFieldName] = item[itemKey as keyof TransformedCommentItem];
+          }
+        }
+        return fieldsForRecord; // <--- 直接返回 fieldsForRecord 对象
+      }).filter(record => record && Object.keys(record).length > 0); // 确保记录不为空且有有效字段
+  
+      if (recordsToCreate.length === 0) {
+        console.warn(`没有有效的记录可以添加到表格 "${tableName}"。`);
+        // window.LarkDocs?.Toast?.warning('没有有效数据可写入。');
+        return;
+      }
+  
+      // 3. 批量添加记录
+      const BATCH_SIZE = 100;
+      let successfullyAddedCount = 0;
+      const totalToAttempt = recordsToCreate.length;
+      let presumedFailedCount = 0;
+  
+      console.log(`准备分批添加 ${totalToAttempt} 条记录到表格 "${tableName}"...`);
+  
+      for (let i = 0; i < totalToAttempt; i += BATCH_SIZE) {
+        // chunk 现在是 IRecordValue[] 类型，符合第一个重载的期望
+        const chunk: IRecordValue[] = recordsToCreate.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
         try {
-          await table.addRecord({
-            fields: {
-              昵称: item.nick_name,
-              评论时间: item.create_time,
-              内容: item.text,
-              IP属地: item.ip_label,
-              用户主页: item.user_url,
-              用户ID: item.user_id,
-              点赞数: item.digg_count
-            }
-          });
-        } catch (error) {
-          console.error(error);
+          // 调用 addRecords 时，参数 chunk 的类型现在应该是 IRecordValue[]
+          await table.addRecords(chunk); 
+          successfullyAddedCount += chunk.length;
+          console.log(`成功添加 ${chunk.length} 条记录 (批次 ${batchNumber}) 到 "${tableName}"。`);
+          // window.LarkDocs?.Toast?.success(`已成功写入 ${chunk.length} 条数据 (批次 ${batchNumber})。`);
+        } catch (batchError) {
+          presumedFailedCount += chunk.length;
+          console.error(`批量添加记录时出错 (表格 "${tableName}", 批次 ${batchNumber}):`, batchError);
+          // window.LarkDocs?.Toast?.error(`数据写入失败 (批次 ${batchNumber})，详情请查看控制台。`);
         }
       }
+      
+      const finalMessage = `数据填充完成 (使用字段名)。表格: "${tableName}". 
+        总共尝试: ${totalToAttempt} 条. 
+        成功写入: ${successfullyAddedCount} 条. 
+        失败(或未确认成功): ${totalToAttempt - successfullyAddedCount} 条.`;
+      console.log(finalMessage);
+      // ... (后续的用户反馈逻辑不变) ...
+  
+    } catch (error) {
+      const criticalErrorMessage = `填充数据到表格 "${tableName || '未知表格'}" 过程中发生严重错误: ${(error as Error).message}`;
+      console.error(criticalErrorMessage, error);
+      // window.LarkDocs?.Toast?.error(criticalErrorMessage);
     }
-
-    console.log('fill done ', table);
   }
 
 
