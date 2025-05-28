@@ -103,3 +103,5 @@ npm run dev
 AIzaSyCamqvTHNZnNw4w_x2sSP8nq2PO33Lqt5c
 
 git push origin main
+
+https://lark-base-team.github.io/js-sdk-docs/zh/api/table#addrecord

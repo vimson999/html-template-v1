@@ -20,14 +20,36 @@ $(async function () {
     const input_values = getFormValuesAndValidate();
     if (!input_values) return;
 
-    const result_data = await getTableData(input_values);
-    console.log('result_data is ', result_data?.result_data);
+    // const result_data = await getTableData(input_values);
+    // console.log('result_data is ', result_data?.result_data);
 
-    const title = 'test'
-    let table = await getTable(title,input_values.intentSelect,result_data?.platform);
-    console.log('table is ', table.getName);
+    // const title = 'test'
+    // let table = await getTable(title,input_values.intentSelect,result_data?.platform);
+    // console.log('table is ', table.getName);
 
-    await fillDataTable(table,result_data.result_data);
+    // await fillDataTable(table,result_data.result_data);
+
+    let fields = [
+      { name: "a", type: 1 },
+      { name: "b", type: 1 },
+      { name: "c", type: 1 }
+    ];
+    let sf = Date.now();
+    const addResult = await bitable.base.addTable({
+      name: 'test' +sf ,
+      fields: fields
+    });
+    const table = await bitable.base.getTableById(addResult.tableId);
+    // await table.addRecord({fields: {
+    //   a: '1',
+    //   b: '2',
+    //   c: '3'
+    // }});
+    const textField = await table.getField('a');
+
+    const textCell = await textField.createCell('new text field value');
+    const recordId = await table.addRecord(textCell);
+    
   });
 
 
@@ -114,7 +136,7 @@ $(async function () {
       // fldiHlcFOw
 
       const record = { fidleds : {} };
-      await table.addRecord(record);
+      // await table.addRecord(record);
     }catch (error) {
       console.log('error is ', error);
     }
