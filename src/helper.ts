@@ -21,7 +21,7 @@ export function inferFieldTypeFromValue(value: any): FieldType { //
       return FieldType.Url; //
     }
     if (value.length >= 10 && (value.includes('-') || value.includes('/') || value.toUpperCase().includes('T')) && !isNaN(new Date(value).getTime())) {
-      return FieldType.DateTime; //
+      // return FieldType.DateTime; //
     }
     return FieldType.Text; //
   }
@@ -225,9 +225,9 @@ export function convertDYComment(origin_commentsList: any[]): CommentSchema[] { 
       nick_name: originalComment.nickname, //
       create_time: originalComment.create_time, //
       text: originalComment.text, //
+      digg_count: diggCountString, //
       ip_label: originalComment.ip_label, //
       user_id: originalComment.uid, //
-      digg_count: diggCountString, //
       user_url: userProfileUrl //
     } as CommentSchema; // 断言为 CommentSchema
   });
@@ -241,38 +241,95 @@ export function convertDYComment(origin_commentsList: any[]): CommentSchema[] { 
   return commentDataListInternal; //
 }
 
-export function convertXHSComment(origin_commentsList: any[]): CommentSchema[] { // 修改了签名，移除了 commentDataList 参数 //
-  // 注意：您提供的 convertXHSComment 内部的返回对象结构与 convertDYComment 不完全一致 (uid vs user_id, url vs user_url)
-  // 这里我假设它应该与 CommentSchema 匹配，因此调整了字段名
-  let commentDataListInternal = origin_commentsList.map(originalComment => { //
-    let userProfileUrl = ''; //
-    // 小红书的 sec_uid 可能不存在或者字段名不同，这里仅作示例保留，您需要根据实际API调整
-    if (originalComment.sec_uid) { // 
-      userProfileUrl = `https://www.xiaohongshu.com/user/profile/${originalComment.user_id_from_api_or_similar}`; // 示例URL，需要实际调整
-    } else if (originalComment.userId) { // 假设小红书返回的是 userId
-        userProfileUrl = `https://www.xiaohongshu.com/user/profile/${originalComment.userId}`;
+
+export function convertXHSComment(origin_commentsList: any[]): CommentSchema[] { //
+  const convertedList: CommentSchema[] = [];
+
+  if (!Array.isArray(origin_commentsList)) {
+    console.warn('[convertXHSComment] origin_commentsList 不是一个有效的数组');
+    return convertedList;
+  }
+
+  origin_commentsList.forEach(originalComment => {
+    // 确保 originalComment 和 originalComment.user_info 存在且是对象
+    if (typeof originalComment !== 'object' || originalComment === null || 
+        typeof originalComment.user_info !== 'object' || originalComment.user_info === null) {
+      console.warn('[convertXHSComment] 无效的评论项或用户信息:', originalComment);
+      return; // 跳过这条无效的评论
     }
 
+    const userInfo = originalComment.user_info;
+    let userProfileUrl = '';
+    if (userInfo.user_id) { //.user_info.user_id]
+      userProfileUrl = `https://www.xiaohongshu.com/user/profile/${userInfo.user_id}`;
+    }
 
-    return { //
-      nick_name: originalComment.nickname, //
-      create_time: originalComment.create_time, //
-      text: originalComment.text, //
-      digg_count: String(originalComment.digg_count), //
-      ip_label: originalComment.ip_label, //
-      user_id: originalComment.uid || originalComment.userId, // 适应可能的字段名差异 //
-      user_url: userProfileUrl //
-    } as CommentSchema; // 断言为 CommentSchema
+    // 处理点赞数，确保小于0时为0
+    let diggCountString = "0";
+    if (originalComment.like_count !== null && originalComment.like_count !== undefined) { //.like_count]
+        const count = Number(originalComment.like_count);
+        diggCountString = count < 0 ? "0" : String(count);
+    }
+    
+    // create_time 已经是毫秒时间戳，可以直接使用，或根据 CommentSchema 转换为字符串
+    // 如果 CommentSchema.create_time 需要字符串，可以在这里格式化：
+    const createTimeFormatted = new Date(originalComment.create_time).toLocaleString(); // 示例格式化
+
+    convertedList.push({
+      nick_name: userInfo.nickname || "未知用户", //.user_info.nickname]
+      create_time: createTimeFormatted, // 直接使用时间戳，如果 CommentSchema.create_time 是 number //.create_time]
+                                               // 或者 createTimeFormatted 如果是字符串
+      text: originalComment.content || "", //.content]
+      digg_count: diggCountString,
+      ip_label: originalComment.ip_location || "未知地点", //.ip_location]
+      user_id: userInfo.user_id || "未知ID", //.user_info.user_id]
+      user_url: userProfileUrl
+    });
+
+    // 如果需要处理子评论 (sub_comments)，可以在这里添加逻辑
+    // 例如，递归调用或将子评论也转换为 CommentSchema 并添加到 convertedList
+    if (Array.isArray(originalComment.sub_comments) && originalComment.sub_comments.length > 0) { //.sub_comments]
+        originalComment.sub_comments.forEach((subComment: any) => {
+            if (typeof subComment !== 'object' || subComment === null ||
+                typeof subComment.user_info !== 'object' || subComment.user_info === null) {
+                console.warn('[convertXHSComment] 无效的子评论项或用户信息:', subComment);
+                return; 
+            }
+            const subUserInfo = subComment.user_info;
+            let subUserProfileUrl = '';
+            if (subUserInfo.user_id) { //.sub_comments[0].user_info.user_id]
+                subUserProfileUrl = `https://www.xiaohongshu.com/user/profile/${subUserInfo.user_id}`;
+            }
+
+            let subDiggCountString = "0";
+            if (subComment.like_count !== null && subComment.like_count !== undefined) { //.sub_comments[0].like_count]
+                const subCount = Number(subComment.like_count);
+                subDiggCountString = subCount < 0 ? "0" : String(subCount);
+            }
+
+            const createTimeFormatted = new Date(subComment.create_time).toLocaleString(); // 示例格式化
+            convertedList.push({
+                nick_name: subUserInfo.nickname || "未知用户", //.sub_comments[0].user_info.nickname]
+                // create_time: subComment.create_time, //.sub_comments[0].create_time]
+                create_time: createTimeFormatted,
+                text: `回复 @${originalComment.user_info.nickname}: ${subComment.content || ""}`, // 添加 "回复@" 前缀 //.sub_comments[0].content]
+                digg_count: subDiggCountString,
+                ip_label: subComment.ip_location || "未知地点", //.sub_comments[0].ip_location]
+                user_id: subUserInfo.user_id || "未知ID", //.sub_comments[0].user_info.user_id]
+                user_url: subUserProfileUrl
+            });
+        });
+    }
   });
-  
-  // 如果需要排序 (原代码中被注释)
-  commentDataListInternal.sort((a: CommentSchema, b: CommentSchema) => { //
+
+  // 按点赞数倒序排序 (如果需要，已在您的 convertDYComment 中存在)
+  convertedList.sort((a: CommentSchema, b: CommentSchema) => {
     const diggA = parseInt(a.digg_count, 10) || 0;
     const diggB = parseInt(b.digg_count, 10) || 0;
     return diggB - diggA;
   });
   
-  return commentDataListInternal; //
+  return convertedList;
 }
 
 export enum MediaPlatform { //
