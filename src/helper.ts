@@ -1,298 +1,364 @@
-import $ from 'jquery';
-import { AddFieldUnknownError, bitable, ITable } from '@lark-base-open/js-sdk';
-import { CommentSchema } from './schema';
+// src/helper.ts
+import { bitable, ITable, IFieldConfig, FieldType, ToastType } from '@lark-base-open/js-sdk'; //
+import { CommentSchema } from './schema'; //
+// 您在 helper.ts 中使用了 $，但没有导入。如果确实需要 jQuery，请取消下面的注释
+// import $ from 'jquery';
 
-
-
-export async function getTable(title: string,intentSelect:string,platform: MediaPlatform) {
-    const radioCreate = (document.getElementById('radioCreate') as HTMLInputElement)?.checked;
-    const intentSelectElement = document.getElementById('intentSelect') as HTMLSelectElement;
-    const intentSelectText = intentSelectElement ? intentSelectElement.options[intentSelectElement.selectedIndex]?.text : '';
-    const title_suffix = await getSheetName();
-
-    let table;
-    if (radioCreate) {
-      const tableName = `【${title}】_【${intentSelectText}】_${title_suffix}`;
-      console.log('tableName is ', tableName);
-
-      const addResult = await bitable.base.addTable({
-        name: tableName,
-        fields: getDefaultFields(platform,intentSelect)
-      });
-
-      table = await bitable.base.getTableById(addResult.tableId);
-    } else {
-      const tableId = $('#tableSelect').val();
-      table = await bitable.base.getTableById(tableId as string);
-    }
-
-    return table;
-  }
-
-
-  export function getDefaultFields(platform: MediaPlatform,intentSelect: string) {
-    let fields = [
-      { name: "a", type: 1 },
-      { name: "b", type: 1 },
-      { name: "c", type: 1 }
-    ];
-
-    // switch (intentSelect) {
-    //   case 'get_comments':
-    //     fields = [
-    //       { name: "昵称", type: 1 },
-    //       { name: "评论时间", type: 1 },
-    //       { name: "内容", type: 1 },
-    //       { name: "赞", type: 1 },
-    //       { name: "所在地", type: 1 },
-    //       { name: "地址", type: 1 },
-    //       { name: "user_id", type: 1 }
-    //     ];
-    //     break;
-    //   case 'keyword_search':
-    //     break;
-    //   default:
-    //     alert('未选择获取的数据');
-    // }
-    
-    return fields;
-  }
-
-
-  export async function getSheetName() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // 月份从0开始，所以+1，并补零
-    const day = now.getDate().toString().padStart(2, '0'); // 补零
-    const hours = now.getHours().toString().padStart(2, '0'); // 补零
-    const minutes = now.getMinutes().toString().padStart(2, '0'); // 补零
-    const seconds = now.getSeconds().toString().padStart(2, '0'); // 补零
-    const randomSuffix = `${year}年${month}月${day}日 ${hours}时${minutes}分${seconds}秒`;
-
-    return randomSuffix;
-  }
-
-
-  export function getFormValuesAndValidate() : FormValues | null{
-    const inputValue = (document.getElementById('inputValue') as HTMLInputElement)?.value.trim();
-    const intentSelect = (document.getElementById('intentSelect') as HTMLSelectElement)?.value;
-    const radioCreate = (document.getElementById('radioCreate') as HTMLInputElement)?.checked;
-    const radioSelect = (document.getElementById('radioSelect') as HTMLInputElement)?.checked;
-    const tableSelect = (document.getElementById('tableSelect') as HTMLSelectElement)?.value;
-    const apiKey = (document.getElementById('apiKey') as HTMLInputElement)?.value.trim();
-
-    if (!inputValue) {
-      alert('请输入地址内容');
-      return null;
-    }
-    if (!intentSelect) {
-      alert('请选择获取的数据');
-      return null;
-    }
-    if (!radioCreate && !radioSelect) {
-      alert('请选择表格操作方式');
-      return null;
-    }
-    if (radioSelect && !tableSelect) {
-      alert('请选择已有表格');
-      return null;
-    }
-    if (!apiKey) {
-      alert('请输入API Key');
-      return null;
-    }
-    return { inputValue, intentSelect, radioCreate, radioSelect, tableSelect, apiKey };
-  }
-
-
-export interface FormValues {
+// FormValues 接口定义 (从您的 helper.ts 移至此处或一个单独的 types.ts 文件更佳)
+export interface FormValues { //
     inputValue: string;
-    intentSelect: string; // Or string | undefined if applicable
+    intentSelect: string;
     radioCreate: boolean;
     radioSelect: boolean;
-    tableSelect: string; // Or string | undefined if applicable
+    tableSelect: string; 
     apiKey: string;
+}
+
+export function inferFieldTypeFromValue(value: any): FieldType { //
+  const jsType = typeof value;
+  if (jsType === 'string') {
+    if (/^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$/i.test(value)) {
+      return FieldType.Url; //
+    }
+    if (value.length >= 10 && (value.includes('-') || value.includes('/') || value.toUpperCase().includes('T')) && !isNaN(new Date(value).getTime())) {
+      return FieldType.DateTime; //
+    }
+    return FieldType.Text; //
   }
+  if (jsType === 'number') {
+    return FieldType.Number; //
+  }
+  if (jsType === 'boolean') {
+    return FieldType.Checkbox; //
+  }
+  if (jsType === 'object' && value !== null) {
+    return FieldType.Text; //
+  }
+  return FieldType.Text; //
+}
 
+export async function getTable(
+  inputValues: { tableOption: string, tableSelect?: string, intentSelect: string },
+  desiredTableNamePrefix: string,
+  platform: string | undefined,
+  apiResultDataForSchema?: any[] | object
+): Promise<ITable | null> { //
+  const ui = bitable.ui; // 获取 ui 对象
 
-  // export interface CommentData {
-  //   nick_name: string;
-  //   create_time: string;
-  //   text: string;
-  //   digg_count: string;
-  //   ip_label: string;
-  //   uid: string;
-  //   url: string;
-  // }
+  if (inputValues.tableOption === 'create') { //
+    if (!apiResultDataForSchema || (Array.isArray(apiResultDataForSchema) && apiResultDataForSchema.length === 0)) { //
+        console.warn('[getTable] 新建表格模式：未提供用于推断表结构的数据。'); //
+        await ui.showToast({ toastType: ToastType.warning, message: '无数据用于推断新表结构' }); //
+        return null;
+    }
 
+    const sampleItem = Array.isArray(apiResultDataForSchema) ? apiResultDataForSchema[0] : apiResultDataForSchema; //
 
-export function getCleanUrl(text: string | null | undefined): string | null {
-  try {
-    if (!text) {
-      console.warn("收到空的URL文本");
+    if (typeof sampleItem !== 'object' || sampleItem === null) { //
+        console.error('[getTable] 新建表格模式：用于推断表结构的数据样本不是有效对象。'); //
+        await ui.showToast({ toastType: ToastType.error, message: '数据样本无效，无法创建表格' }); //
+        return null;
+    }
+    
+    const fieldConfigList: IFieldConfig[] = []; //
+
+    for (const key in sampleItem) { //
+      if (Object.prototype.hasOwnProperty.call(sampleItem, key)) { //
+        const specificFieldType = inferFieldTypeFromValue(sampleItem[key]); //
+        
+        let configItem: IFieldConfig;
+
+        switch (specificFieldType) { //
+            case FieldType.Text:
+                configItem = { name: key, type: FieldType.Text, property: undefined };
+                break;
+            case FieldType.Number:
+                configItem = { name: key, type: FieldType.Number, property: undefined };
+                break;
+            case FieldType.Url:
+                configItem = { name: key, type: FieldType.Url, property: undefined };
+                break;
+            case FieldType.DateTime:
+                configItem = { name: key, type: FieldType.DateTime, property: undefined };
+                break;
+            case FieldType.Checkbox:
+                configItem = { name: key, type: FieldType.Checkbox, property: undefined };
+                break;
+            default:
+                console.warn(`[getTable] Unexpected specificFieldType: ${specificFieldType} for key: ${key}. Defaulting to Text.`);
+                configItem = { name: key, type: FieldType.Text, property: undefined };
+                break;
+        }
+        fieldConfigList.push(configItem); //
+      }
+    }
+
+    if (fieldConfigList.length === 0) { //
+        console.warn('[getTable] 未能从数据中分析出任何字段用于新表。'); //
+        await ui.showToast({ toastType: ToastType.warning, message: '无法确定新表格的字段' }); //
+        return null;
+    }
+
+    const timeSuffix = await getSheetName(); // 调用修改后的 getSheetName 获取 时分秒 后缀
+    const prefixPart = desiredTableNamePrefix ? `${desiredTableNamePrefix}_` : ""; // 如果前缀不为空，则添加下划线
+    const uniqueTableName = `${prefixPart}${inputValues.intentSelect}_${timeSuffix}`; 
+    try { //
+        const { tableId } = await bitable.base.addTable({ //
+            name: uniqueTableName, //
+            fields: fieldConfigList, //
+        });
+        await ui.showToast({ toastType: ToastType.success, message: `表格 "${uniqueTableName}" 已创建` }); //
+        return await bitable.base.getTableById(tableId); //
+    } catch (error) { //
+        console.error(`[getTable] 创建表格 "${uniqueTableName}" 失败:`, error); //
+        await ui.showToast({ toastType: ToastType.error, message: `创建表格失败: ${(error as Error).message}` }); //
+        return null;
+    }
+
+  } else if (inputValues.tableOption === 'select') { //
+    const selectedTableId = inputValues.tableSelect; //
+    if (!selectedTableId) { //
+      await ui.showToast({ toastType: ToastType.warning, message: '未选择任何现有表格' }); //
       return null;
     }
-    const urlRegex = /https?:\/\/(?:[-\w.]|[?=&/%#])+/g;
-    const matches = String(text).match(urlRegex);
-    if (!matches || matches.length === 0) {
-      console.warn(`未找到有效的URL: ${text}`);
+    try { //
+      const table = await bitable.base.getTableById(selectedTableId); //
+      return table; //
+    } catch (error) { //
+      console.error(`[getTable] 获取所选表格 (ID: ${selectedTableId}) 失败:`, error); //
+      await ui.showToast({ toastType: ToastType.error, message: `获取所选表格失败: ${(error as Error).message}` }); //
       return null;
     }
-    let url = matches[0].trim();
-    url = url.replace(/[<>"{}|\\'^`]/g, "");
-    if (!(url.startsWith("http://") || url.startsWith("https://"))) {
-      console.warn(`URL协议不支持: ${url}`);
-      return null;
-    }
-    return url;
-  } catch (e) {
-    console.error(`URL提取失败: ${(e as Error).message}`, e);
+  } else { //
+    await ui.showToast({ toastType: ToastType.error, message: '无效的表格操作选项' }); //
     return null;
   }
 }
 
+// 保持您 helper.ts 中的其他函数，例如:
+// getTable_1, getDefaultFields, getSheetName, getFormValuesAndValidate,
+// getCleanUrl, convertDYComment, convertXHSComment, identifyPlatform, MediaPlatform 枚举等。
+// 确保这些函数如果内部使用了 bitable.ui.showToast, 也会先获取 bitable.ui 对象。
+// 例如 getFormValuesAndValidate 使用了 alert，可以保持原样或按需修改。
 
+export function getFormValuesAndValidate(): FormValues | null { //
+    const inputValueElement = document.getElementById('inputValue') as HTMLInputElement | null; //
+    const inputValue = inputValueElement ? inputValueElement.value.trim() : ""; 
 
-export function convertDYComment(commentDataList: any, origin_commentsList: any[]) {
-  commentDataList = origin_commentsList.map(originalComment => {
-    let userProfileUrl = '';
-    if (originalComment.sec_uid) {
-      userProfileUrl = `https://www.douyin.com/user/${originalComment.sec_uid}`;
+    const intentSelectElement = document.getElementById('intentSelect') as HTMLSelectElement | null; //
+    const intentSelect = intentSelectElement ? intentSelectElement.value : ""; 
+
+    const radioCreateElement = document.getElementById('radioCreate') as HTMLInputElement | null; //
+    const radioCreate = radioCreateElement ? radioCreateElement.checked : false; 
+
+    const radioSelectElement = document.getElementById('radioSelect') as HTMLInputElement | null; //
+    const radioSelect = radioSelectElement ? radioSelectElement.checked : false; 
+
+    const tableSelectElement = document.getElementById('tableSelect') as HTMLSelectElement | null; //
+    const tableSelect = tableSelectElement ? tableSelectElement.value : ""; 
+
+    const apiKeyElement = document.getElementById('apiKey') as HTMLInputElement | null; //
+    const apiKey = apiKeyElement ? apiKeyElement.value.trim() : ""; 
+
+    if (!inputValue) { //
+      alert('请输入地址内容'); //
+      return null; //
+    }
+    if (!intentSelect) { //
+      alert('请选择获取的数据'); //
+      return null; //
+    }
+    if (!radioCreate && !radioSelect) { //
+      alert('请选择表格操作方式'); //
+      return null; //
+    }
+    if (radioSelect && !tableSelect) { //
+      alert('请选择已有表格'); //
+      return null; //
+    }
+    if (!apiKey) { //
+      alert('请输入API Key'); //
+      return null; //
+    }
+    return { inputValue, intentSelect, radioCreate, radioSelect, tableSelect, apiKey }; //
+}
+
+export function getCleanUrl(text: string | null | undefined): string | null { //
+  try { //
+    if (!text) { //
+      console.warn("收到空的URL文本"); //
+      return null; //
+    }
+    const urlRegex = /https?:\/\/(?:[-\w.]|[?=&/%#])+/g; //
+    const matches = String(text).match(urlRegex); //
+    if (!matches || matches.length === 0) { //
+      console.warn(`未找到有效的URL: ${text}`); //
+      return null; //
+    }
+    let url = matches[0].trim(); //
+    url = url.replace(/[<>"{}|\\'^`]/g, ""); //
+    if (!(url.startsWith("http://") || url.startsWith("https://"))) { //
+      console.warn(`URL协议不支持: ${url}`); //
+      return null; //
+    }
+    return url; //
+  } catch (e) { //
+    console.error(`URL提取失败: ${(e as Error).message}`, e); //
+    return null; //
+  }
+}
+
+export function convertDYComment(origin_commentsList: any[]): CommentSchema[] { // 修改了签名，移除了 commentDataList 参数 //
+  let commentDataListInternal = origin_commentsList.map(originalComment => { //
+    let userProfileUrl = ''; //
+    if (originalComment.sec_uid) { //
+      userProfileUrl = `https://www.douyin.com/user/${originalComment.sec_uid}`; //
     }
 
-    return {
-      nick_name: originalComment.nickname, // 映射 nickname
-      create_time: originalComment.create_time, // 直接使用，已经是字符串
-      text: originalComment.text, // 直接使用
-      ip_label: originalComment.ip_label, // 直接使用
-      user_id: originalComment.uid, // 直接使用 (原始数据中的 uid 已经是字符串或可以被JS安全处理)
-      digg_count: String(originalComment.digg_count), // 数字转换为字符串
-      user_url: userProfileUrl // 使用构造的 URL，如果无法构造则为空字符串
-    };
+    let diggCountString = "0";
+    if (originalComment.digg_count !== null && originalComment.digg_count !== undefined) {
+        const count = Number(originalComment.digg_count);
+        diggCountString = count < 0 ? "0" : String(count);
+    }
+
+    return { //
+      nick_name: originalComment.nickname, //
+      create_time: originalComment.create_time, //
+      text: originalComment.text, //
+      ip_label: originalComment.ip_label, //
+      user_id: originalComment.uid, //
+      digg_count: diggCountString, //
+      user_url: userProfileUrl //
+    } as CommentSchema; // 断言为 CommentSchema
   });
 
-  // 添加按 digg_count 倒序排序的逻辑
-  commentDataList.sort((a: CommentSchema, b: CommentSchema) => {
-    const diggA = parseInt(a.digg_count, 10) || 0; // 转换为数字，如果转换失败则为0
+  commentDataListInternal.sort((a: CommentSchema, b: CommentSchema) => { //
+    const diggA = parseInt(a.digg_count, 10) || 0; //
+    const diggB = parseInt(b.digg_count, 10) || 0; //
+    return diggB - diggA; //
+  });
+
+  return commentDataListInternal; //
+}
+
+export function convertXHSComment(origin_commentsList: any[]): CommentSchema[] { // 修改了签名，移除了 commentDataList 参数 //
+  // 注意：您提供的 convertXHSComment 内部的返回对象结构与 convertDYComment 不完全一致 (uid vs user_id, url vs user_url)
+  // 这里我假设它应该与 CommentSchema 匹配，因此调整了字段名
+  let commentDataListInternal = origin_commentsList.map(originalComment => { //
+    let userProfileUrl = ''; //
+    // 小红书的 sec_uid 可能不存在或者字段名不同，这里仅作示例保留，您需要根据实际API调整
+    if (originalComment.sec_uid) { // 
+      userProfileUrl = `https://www.xiaohongshu.com/user/profile/${originalComment.user_id_from_api_or_similar}`; // 示例URL，需要实际调整
+    } else if (originalComment.userId) { // 假设小红书返回的是 userId
+        userProfileUrl = `https://www.xiaohongshu.com/user/profile/${originalComment.userId}`;
+    }
+
+
+    return { //
+      nick_name: originalComment.nickname, //
+      create_time: originalComment.create_time, //
+      text: originalComment.text, //
+      digg_count: String(originalComment.digg_count), //
+      ip_label: originalComment.ip_label, //
+      user_id: originalComment.uid || originalComment.userId, // 适应可能的字段名差异 //
+      user_url: userProfileUrl //
+    } as CommentSchema; // 断言为 CommentSchema
+  });
+  
+  // 如果需要排序 (原代码中被注释)
+  commentDataListInternal.sort((a: CommentSchema, b: CommentSchema) => { //
+    const diggA = parseInt(a.digg_count, 10) || 0;
     const diggB = parseInt(b.digg_count, 10) || 0;
-    return diggB - diggA; // 倒序排序
+    return diggB - diggA;
   });
-
-  return commentDataList;
-}
-
-
-
-export function convertXHSComment(commentDataList: any, origin_commentsList: any[]) {
-  commentDataList = origin_commentsList.map(originalComment => {
-    let userProfileUrl = '';
-    if (originalComment.sec_uid) {
-      userProfileUrl = `https://www.douyin.com/user/${originalComment.sec_uid}`;
-    }
-
-    return {
-      nick_name: originalComment.nickname, // 映射 nickname
-      create_time: originalComment.create_time, // 直接使用，已经是字符串
-      text: originalComment.text, // 直接使用
-      digg_count: String(originalComment.digg_count), // 数字转换为字符串
-      ip_label: originalComment.ip_label, // 直接使用
-      uid: originalComment.uid, // 直接使用 (原始数据中的 uid 已经是字符串或可以被JS安全处理)
-      url: userProfileUrl // 使用构造的 URL，如果无法构造则为空字符串
-    };
-  });
-
-  // 添加按 digg_count 倒序排序的逻辑
-  // commentDataList.sort((a: CommentData, b: CommentData) => {
-  //   const diggA = parseInt(a.digg_count, 10) || 0; // 转换为数字，如果转换失败则为0
-  //   const diggB = parseInt(b.digg_count, 10) || 0;
-  //   return diggB - diggA; // 倒序排序
-  // });
   
-  return commentDataList;
+  return commentDataListInternal; //
 }
 
-
-
-/**
- * 定义媒体平台类型的枚举
- */
-export enum MediaPlatform {
-  DOUYIN = "douyin",
-  XIAOHONGSHU = "xiaohongshu",
-  BILIBILI = "bilibili",
-  YOUTUBE = "youtube",
-  INSTAGRAM = "instagram",
-  TIKTOK = "tiktok",
-  KUAISHOU = "kuaishou",
-  UNKNOWN = "unknown"
+export enum MediaPlatform { //
+  DOUYIN = "douyin", //
+  XIAOHONGSHU = "xiaohongshu", //
+  BILIBILI = "bilibili", //
+  YOUTUBE = "youtube", //
+  INSTAGRAM = "instagram", //
+  TIKTOK = "tiktok", //
+  KUAISHOU = "kuaishou", //
+  UNKNOWN = "unknown" //
 }
 
-/**
- * 识别 URL 对应的媒体平台
- * * @param url 媒体 URL 字符串
- * @returns 返回平台标识 (MediaPlatform 枚举成员)
- */
-export function identifyPlatform(url: string): MediaPlatform {
-  if (!url) { // 处理空或未定义的 URL 输入
-    return MediaPlatform.UNKNOWN;
+export function identifyPlatform(url: string): MediaPlatform { //
+  if (!url) { //
+    return MediaPlatform.UNKNOWN; //
   }
 
-  const lowercasedUrl = url.toLowerCase();
+  const lowercasedUrl = url.toLowerCase(); //
 
-  // 抖音 URL 模式
-  const douyinDomains: string[] = ["douyin.com", "iesdouyin.com"];
-  if (douyinDomains.some(domain => lowercasedUrl.includes(domain))) {
-    return MediaPlatform.DOUYIN;
+  const douyinDomains: string[] = ["douyin.com", "iesdouyin.com"]; //
+  if (douyinDomains.some(domain => lowercasedUrl.includes(domain))) { //
+    return MediaPlatform.DOUYIN; //
   }
 
-  // 小红书 URL 模式
-  const xiaohongshuDomains: string[] = ["xiaohongshu.com", "xhslink.com", "xhs.cn"];
-  if (xiaohongshuDomains.some(domain => lowercasedUrl.includes(domain))) {
-    return MediaPlatform.XIAOHONGSHU;
+  const xiaohongshuDomains: string[] = ["xiaohongshu.com", "xhslink.com", "xhs.cn"]; //
+  if (xiaohongshuDomains.some(domain => lowercasedUrl.includes(domain))) { //
+    return MediaPlatform.XIAOHONGSHU; //
   }
 
-  // B站 URL 模式 (修正了 Python 代码中 bilibili.com 重复的问题)
-  const bilibiliDomains: string[] = ["bilibili.com", "bilibili.cn"];
-  if (bilibiliDomains.some(domain => lowercasedUrl.includes(domain))) {
-    return MediaPlatform.BILIBILI;
+  const bilibiliDomains: string[] = ["bilibili.com", "bilibili.cn"]; //
+  if (bilibiliDomains.some(domain => lowercasedUrl.includes(domain))) { //
+    return MediaPlatform.BILIBILI; //
   }
-
-  // YouTube URL 模式
-  // 请注意：以下 YouTube 的检测逻辑是根据你原始 Python 代码中非常特定的链接格式。
-  // 它并不包含常见的 youtube.com 或 youtu.be 域名。
-  // 如果你需要更通用的 YouTube 检测，这部分逻辑可能需要扩展。
-  const youtubeSpecificFragments: string[] = [
-    "youtu.be", 
-    "youtube.com"
+  
+  const youtubeSpecificFragments: string[] = [ //
+    "youtu.be",  //
+    "youtube.com" //
   ];
-  if (youtubeSpecificFragments.some(fragment => lowercasedUrl.includes(fragment))) {
-    return MediaPlatform.YOUTUBE;
-  }
-  // 如果需要更通用的 YouTube 检测，可以考虑添加：
-  // const youtubeGeneralDomains: string[] = ["youtube.com", "youtu.be"];
-  // if (youtubeGeneralDomains.some(domain => lowercasedUrl.includes(domain))) {
-  //   return MediaPlatform.YOUTUBE;
-  // }
-
-
-  // Instagram URL 模式
-  const instagramDomains: string[] = ["instagram.com"];
-  if (instagramDomains.some(domain => lowercasedUrl.includes(domain))) {
-    return MediaPlatform.INSTAGRAM;
+  if (youtubeSpecificFragments.some(fragment => lowercasedUrl.includes(fragment))) { //
+    return MediaPlatform.YOUTUBE; //
   }
 
-  // TikTok URL 模式
-  const tiktokDomains: string[] = ["tiktok.com"];
-  if (tiktokDomains.some(domain => lowercasedUrl.includes(domain))) {
-    return MediaPlatform.TIKTOK;
+  const instagramDomains: string[] = ["instagram.com"]; //
+  if (instagramDomains.some(domain => lowercasedUrl.includes(domain))) { //
+    return MediaPlatform.INSTAGRAM; //
   }
 
-  // 快手 URL 模式
-  const kuaishouDomains: string[] = ["kuaishou.com"];
-  if (kuaishouDomains.some(domain => lowercasedUrl.includes(domain))) {
-    return MediaPlatform.KUAISHOU;
+  const tiktokDomains: string[] = ["tiktok.com"]; //
+  if (tiktokDomains.some(domain => lowercasedUrl.includes(domain))) { //
+    return MediaPlatform.TIKTOK; //
+  }
+
+  const kuaishouDomains: string[] = ["kuaishou.com"]; //
+  if (kuaishouDomains.some(domain => lowercasedUrl.includes(domain))) { //
+    return MediaPlatform.KUAISHOU; //
   }
   
-  // 未知平台
-  return MediaPlatform.UNKNOWN;
+  return MediaPlatform.UNKNOWN; //
+}
+
+// getDefaultFields 返回的是 FieldType 数字枚举，与 SDK 的 FieldType 字符串/数字枚举可能不直接兼容
+// 需要确保这些数字与 JS SDK 中 FieldType 的实际值对应，或者进行转换
+// 例如，JS SDK 中 FieldType.Text 可能不是数字 1。
+// 鉴于之前的类型错误，直接使用数字作为 type 是有风险的。
+// 建议 getDefaultFields 直接返回符合 IFieldConfig 中 type 期望的 FieldType 枚举成员。
+// 为保持您原有结构，我对 getTable_1 做了最小调整并加了类型断言，但这部分需要您仔细核对 FieldType 的实际值。
+export function getDefaultFields(platform: MediaPlatform,intentSelect: string): {name: string, type: number}[] { //
+    let fields = [ //
+      { name: "a", type: 1 }, //
+      { name: "b", type: 1 }, //
+      { name: "c", type: 1 } //
+    ];
+    // 您原来的 switch 逻辑被注释掉了，如果需要启用，请确保 type 的值与 JS SDK 的 FieldType 兼容
+    return fields; //
+}
+
+export async function getSheetName() { //
+  const now = new Date(); //
+  const year = now.getFullYear(); //
+  const month = (now.getMonth() + 1).toString().padStart(2, '0'); //
+  const day = now.getDate().toString().padStart(2, '0'); //
+  const hours = now.getHours().toString().padStart(2, '0'); //
+  const minutes = now.getMinutes().toString().padStart(2, '0'); //
+  const seconds = now.getSeconds().toString().padStart(2, '0'); //
+  // 修改 getSheetName 返回更简洁的时分秒或您需要的格式
+  // return `${year}年${month}月${day}日 ${hours}时${minutes}分${seconds}秒`; // 您原来的格式
+  return `${hours}点${minutes}分${seconds}`; // 返回 时分秒，例如 "143055"
 }
