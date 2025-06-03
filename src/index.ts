@@ -257,8 +257,8 @@ $(async function () { //
       'Authorization': `Bearer ${apiKey}` //
     };
 
-    // const activeDomain = 'http://localhost:8083'; //
-    const activeDomain = 'http://42.192.40.44:8083'
+    const activeDomain = 'http://localhost:8083'; //
+    // const activeDomain = 'http://42.192.40.44:8083'
     const host_base = activeDomain.startsWith('http') ? activeDomain : `http://${activeDomain}`; //
 
     let result_data_from_api; //
@@ -300,8 +300,64 @@ $(async function () { //
     return null; //
   }
   async function getKeywordsSearch(host_base: string, inputValue: string, headers: any) { //
-    return null; //
+    const ui = bitable.ui; // 获取ui对象 //
+    const comment_api_path = '/api/tt/sn';  //
+    const full_api_path = `${host_base}${comment_api_path}`; //
+
+    // const intentSelectElement = document.getElementById('intentSelect') as HTMLSelectElement | null; //
+    // const platformParam = intentSelectElement ? intentSelectElement.value : ""; 
+
+    try { //
+      console.log(`[getKeywordsSearch] Fetching from: ${full_api_path} with URL: ${inputValue}`); //
+      const response = await fetch(full_api_path, { //
+        method: 'POST', //
+        headers: headers, //
+        body: JSON.stringify({ 
+          query: inputValue,
+          platform  : "douyin"
+          // platform : platformParam 
+        })  //
+      });
+
+      if (!response.ok) { //
+        const errorText = await response.text(); //
+        console.error(`[getKeywordsSearch] HTTP error! status: ${response.status}`, errorText); //
+        await ui.showToast({ toastType: ToastType.error, message: `API请求错误 ${response.status}: ${errorText.substring(0, 100)}` }); // 截断过长的错误信息
+        return null; //
+      }
+
+      const data = await response.json(); //
+      console.log('[getKeywordsSearch] Raw API Response:', data); //
+
+      const origin_commentsList = data?.data; //
+
+      if (origin_commentsList && Array.isArray(origin_commentsList)) { //
+        let convertedCommentData = origin_commentsList; //
+        // const platformToUse = apiPlatform || platformParam; //
+
+        // if (platformToUse === MediaPlatform.DOUYIN) { //
+        //   convertedCommentData = convertDYComment(origin_commentsList); //
+        // } else if (platformToUse === MediaPlatform.XIAOHONGSHU) { //
+        //   convertedCommentData = convertXHSComment(origin_commentsList); //
+        // } else { //
+        //   console.warn(`[getKeywordsSearch] Unknown or unhandled platform: ${platformToUse}`); //
+        //   await ui.showToast({ toastType: ToastType.warning, message: `评论转换暂不支持平台: ${platformToUse}` }); //
+        //   convertedCommentData = origin_commentsList;  //
+        // }
+        console.log('[getKeywordsSearch] Converted Data:', convertedCommentData); //
+        return convertedCommentData; //
+      } else { //
+        console.warn('[getKeywordsSearch] list not found or not an array in API response.'); //
+        await ui.showToast({ toastType: ToastType.warning, message: 'API未返回有效的评论列表' }); //
+        return null; //
+      }
+    } catch (error) { //
+      console.error('[getKeywordsSearch] Error fetching or processing video data:', error); //
+      await ui.showToast({ toastType: ToastType.error, message: `获取数据失败: ${(error as Error).message.substring(0, 100)}` }); // 截断过长的错误信息 //
+      return null; //
+    }
   }
+
   async function getKOLBasic(host_base: string, inputValue: string, headers: any) { //
     return null; //
   }
