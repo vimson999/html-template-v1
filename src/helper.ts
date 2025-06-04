@@ -1,6 +1,16 @@
 // src/helper.ts
-import { bitable, ITable, IFieldConfig, FieldType, ToastType } from '@lark-base-open/js-sdk'; //
-import { CommentSchema } from './schema'; //
+import { bitable, ITable, IRecordValue, IFieldMeta, FieldType, ToastType, IFieldConfig, ICell } from '@lark-base-open/js-sdk'; //
+import { 
+  CommentSchema, 
+  KeyWordSearchAuthorInfo,
+  KeyWordSearchApiDataItem,
+  AuthorBasicAPISchema,
+  AuthorBasicFormatted,
+  VideoBasicApiData,
+  VideoBasicFormatted,
+  KOLPostsInput,
+  KOLPostsFormatted,
+  KeyWordSearchFeishuFormattedItem } from './schema'; //
 // 您在 helper.ts 中使用了 $，但没有导入。如果确实需要 jQuery，请取消下面的注释
 // import $ from 'jquery';
 
@@ -418,4 +428,340 @@ export async function getSheetName() { //
   // 修改 getSheetName 返回更简洁的时分秒或您需要的格式
   // return `${year}年${month}月${day}日 ${hours}时${minutes}分${seconds}秒`; // 您原来的格式
   return `${hours}点${minutes}分${seconds}`; // 返回 时分秒，例如 "143055"
+}
+
+
+export function convertFromSeachKWToFeishuFormat(originDataList: KeyWordSearchApiDataItem[]): KeyWordSearchFeishuFormattedItem[] {
+  if (!Array.isArray(originDataList)) {
+    console.warn('[convertToFeishuFormat] 输入的不是一个数组, 返回空数组');
+    return [];
+  }
+
+  // Helper function to safely get nested properties
+  // 使用泛型使 defaultValue 和返回值类型更准确
+  const getSafe = <TValue, TDefault>(
+    fn: () => TValue | undefined | null, // 函数可能返回目标值、undefined或null
+    defaultValue: TDefault
+  ): TValue | TDefault => {
+    try {
+      const value = fn();
+      return (value === undefined || value === null) ? defaultValue : value;
+    } catch (e) {
+      // 如果 fn() 本身抛出错误 (例如访问null对象的属性)
+      return defaultValue;
+    }
+  };
+
+  // Helper function to format datetime input
+  const formatPublishTime = (timeInput: string | number | null | undefined): string => {
+    if (timeInput === null || timeInput === undefined || timeInput === '') {
+      return '';
+    }
+    try {
+      const date = new Date(timeInput);
+      if (isNaN(date.getTime())) {
+        console.warn(`[formatPublishTime] 根据输入创建的日期无效: ${timeInput}`);
+        return String(timeInput); // 返回原始输入的字符串形式
+      }
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const seconds = date.getSeconds().toString().padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    } catch (error) {
+      console.error(`[formatPublishTime] 解析日期输入时出错: ${timeInput}`, error);
+      return String(timeInput); // 出错时返回原始输入的字符串形式
+    }
+  };
+
+  return originDataList.map((item: KeyWordSearchApiDataItem): KeyWordSearchFeishuFormattedItem => {
+    // Handle potentially problematic video_url
+    // getSafe的第一个参数是函数，所以是 item.video_url 而不是 ()=>item.video_url
+    // 但为了保持一致性，fn参数应该总是函数
+    let contentUrlInput = getSafe(() => item.video_url, ''); // defaultValue is string
+    let contentUrl: string = ''; // Ensure contentUrl is always string
+
+    if (typeof contentUrlInput === 'string') {
+        contentUrl = contentUrlInput; // Assign if it's already a string
+        if (contentUrlInput.startsWith("['") && contentUrlInput.endsWith("']")) {
+            try {
+                const parsedArray = JSON.parse(contentUrlInput.replace(/'/g, '"'));
+                if (Array.isArray(parsedArray) && parsedArray.length > 0 && typeof parsedArray[0] === 'string') {
+                    contentUrl = parsedArray[0];
+                }
+            } catch (e) {
+                console.warn(`[convertToFeishuFormat] 解析 video_url 字符串列表失败: ${contentUrlInput}`, e);
+                // contentUrl 保持为原始的 contentUrlInput 字符串
+            }
+        }
+    } else if (Array.isArray(contentUrlInput) && contentUrlInput.length > 0 && typeof contentUrlInput[0] === 'string') {
+        contentUrl = contentUrlInput[0]; // 如果已经是数组，取第一个字符串元素
+    } else if (contentUrlInput !== null && contentUrlInput !== undefined) {
+        contentUrl = String(contentUrlInput); // Fallback to string conversion
+    }
+
+
+    return {
+      "标题": getSafe(() => item.title, ''), // defaultValue for string fields
+      "描述": getSafe(() => item.description, ''),
+      "平台": getSafe(() => item.platform, ''),
+      "发布时间": formatPublishTime(getSafe(() => item.publish_time, null)), // Pass null as default if prefer formatPublishTime to handle it
+      "播放数": getSafe(() => item.play_count, 0),  
+      "点赞数": getSafe(() => item.like_count, 0),       // defaultValue for number fields
+      "评论数": getSafe(() => item.comment_count, 0),
+      "分享数": getSafe(() => item.share_count, 0),
+      "收藏数": getSafe(() => item.collect_count, 0),
+      "作者昵称": getSafe(() => item.author?.nickname, ''),
+      "作者主页": getSafe(() => item.author?.url, ''),
+      "作品链接": getSafe(() => item.video_platform_url, ''),
+      "封面图片链接": getSafe(() => item.cover_url, ''),
+      "内容链接": contentUrl,
+      "标签": getSafe(() => item.tags, ''),
+      "时长(秒)": getSafe(() => item.duration, 0),
+      "采集成本": getSafe(() => item.point_cost, 0)
+    };
+  });
+}
+
+export function convertKOLPostData(searchNotes: KOLPostsInput[]): KOLPostsFormatted[] {
+  if (!searchNotes || searchNotes.length === 0) {
+    return [];
+  }
+
+  return searchNotes.map(note => {
+    let formattedCreateTime: string | null = null;
+    if (note.create_time) {
+      try {
+        const date = new Date(note.create_time);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        formattedCreateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      } catch (e) {
+        formattedCreateTime = note.create_time;
+      }
+    }
+
+    const imageUrlsString = note.image_urls && note.image_urls.length > 0
+      ? note.image_urls.join('\n')
+      : null;
+
+    const feishuRow: KOLPostsFormatted = {
+      '标题': note.title,
+      '作者昵称': note.author_nickname,
+      '发布时间': formattedCreateTime,
+      '点赞数': note.like_count,
+      '评论数': note.comment_count,
+      '收藏数': note.collect_count,
+      '分享数': note.share_count,
+      '作品ID': note.note_id,
+      '类型': note.media_type, // 注意这里需要与 SearchNoteDataInput 的 media_type 对应
+      '平台': note.platform,
+      '作者ID': note.author_id,
+      '作品链接': note.post_url,
+      '封面链接': note.cover_image_url,
+      '视频链接': note.video_url,
+      '视频时长(秒)': note.video_duration,
+      '图片链接列表': imageUrlsString,
+      '作者头像链接': note.author_avatar_url,
+    };
+    return feishuRow;
+  });
+}
+
+
+export function convertedAuthorAPIData(origin_author: AuthorBasicAPISchema | null | undefined): AuthorBasicFormatted | null {
+  if (!origin_author) {
+    return null; // 如果原始数据为空，则返回 null
+  }
+
+  // 为了安全访问属性并提供默认值，可以使用如下方式：
+  // (value ?? defaultValue) - 如果 value 是 null 或 undefined，则使用 defaultValue
+
+  return {
+    "平台": origin_author.platform ?? '',
+    "作者昵称": origin_author.nickname ?? '',
+    "个性签名": origin_author.bio_signature ?? '',
+    "粉丝数": origin_author.follower_count ?? 0,
+    "关注数": origin_author.following_count ?? 0,
+    "总互动量": origin_author.total_engagement ?? 0,
+    "作品数": origin_author.post_count ?? 0,
+    "IP属地": origin_author.ip_location ?? '',
+    "平台用户ID": origin_author.user_id_platform ?? '',
+    "头像链接": origin_author.avatar_url ?? '',   
+    "作者主页": origin_author.original_url ?? '', // API返回的是 original_url
+  };
+}
+
+
+export async function fillDataTable(
+  table: ITable,
+  dataToFill: any[] | undefined,
+  wasTableDynamicallyCreated: boolean // 这个参数在 ICell[][] 方式下可能不那么直接相关，但保留以了解数据来源
+) { //
+  const ui = bitable.ui; //
+
+  if (!table) { //
+    console.error('[fillDataTable] 无效的表格对象。'); //
+    await ui.showToast({ toastType: ToastType.error, message: '无效表格对象，无法填充' }); //
+    return; //
+  }
+  if (!dataToFill || !Array.isArray(dataToFill) || dataToFill.length === 0) { //
+    console.warn('[fillDataTable] 没有数据可供填充。'); //
+    await ui.showToast({ toastType: ToastType.info, message: '没有数据可供填充' });
+    return; //
+  }
+
+  if (typeof dataToFill[0] !== 'object' || dataToFill[0] === null) { //
+    console.warn('[fillDataTable] 数据格式不正确或为空数组（首项非对象）。'); //
+    await ui.showToast({ toastType: ToastType.warning, message: '待填充数据格式不正确' }); //
+    return; //
+  }
+
+  const recordsAsCells: ICell[][] = []; // 用于存储最终的 ICell[][]
+  
+  try {
+    // 1. 获取表格的字段列表，以便按名称查找字段对象
+    // 如果是动态创建的表，字段名就是 API 的 key；如果是现有表，字段名是用户定义的。
+    const fieldMetaList = await table.getFieldMetaList(); //
+    const fieldMapByName = new Map<string, IFieldMeta>();
+    fieldMetaList.forEach(meta => fieldMapByName.set(meta.name, meta));
+
+    const firstItemKeys = Object.keys(dataToFill[0]); // API 数据中的键（可能作为字段名）
+
+    for (const item of dataToFill) { //
+      if (typeof item !== 'object' || item === null) continue; //
+
+      const recordCells: ICell[] = []; // 存储单条记录的 ICell 对象
+
+      for (const apiKey of firstItemKeys) { //
+        if (!Object.prototype.hasOwnProperty.call(item, apiKey)) continue; //
+
+        const rawValue = item[apiKey]; //
+        
+        // 通过 apiKey (作为字段名) 查找对应的 Field 对象
+        const fieldMeta = fieldMapByName.get(apiKey);
+        
+        if (fieldMeta) {
+          try {
+            const field = await table.getFieldById(fieldMeta.id);
+            // 对 rawValue 进行类型转换以匹配字段类型，field.createCell 会处理大部分情况
+            // 但对于 DateTime，SDK 通常期望时间戳
+            let valueToCreateCellWith = rawValue;
+            if (fieldMeta.type === FieldType.DateTime && rawValue !== null && rawValue !== undefined) { //
+              const timestamp = new Date(rawValue).getTime(); //
+              if (!isNaN(timestamp)) { //
+                valueToCreateCellWith = timestamp; //
+              } else {
+                console.warn(`[fillDataTable] 值 "${rawValue}" 无法转换为字段 "${apiKey}" 的有效时间戳。将尝试使用原始值。`);
+                // valueToCreateCellWith = null; // 或者不创建这个cell
+              }
+            } else if (fieldMeta.type === FieldType.Checkbox && rawValue !== null && rawValue !== undefined ) { //
+                 valueToCreateCellWith = Boolean(rawValue && String(rawValue).toLowerCase() !== 'false' && String(rawValue) !== '0'); //
+            } else if ((fieldMeta.type === FieldType.Number) && rawValue !== null && rawValue !== undefined ) { //
+                const num = parseFloat(String(rawValue)); //
+                valueToCreateCellWith = isNaN(num) ? null : num; //
+            } else if (typeof rawValue === 'object' && rawValue !== null && fieldMeta.type === FieldType.Text) { //
+                // 如果字段是文本类型，但原始值是对象/数组，序列化为JSON字符串
+                try {
+                    valueToCreateCellWith = JSON.stringify(rawValue); //
+                } catch (e) {
+                    valueToCreateCellWith = String(rawValue); //
+                }
+            }
+
+
+            if (valueToCreateCellWith !== null && valueToCreateCellWith !== undefined) { // 避免为 null 或 undefined 创建单元格，除非字段允许
+                const cell = await field.createCell(valueToCreateCellWith);
+                recordCells.push(cell);
+            } else if (rawValue === null || rawValue === undefined) { // 如果原始值就是 null/undefined，也创建一个表示空值的单元格
+                const cell = await field.createCell(null); // 或者 undefined，取决于字段类型如何处理
+                recordCells.push(cell);
+            }
+          } catch (fieldError) {
+            console.error(`[fillDataTable] 处理字段 "${apiKey}" (ID: ${fieldMeta.id}) 时出错: `, fieldError);
+            // 可选择跳过此字段或整条记录
+          }
+        } else {
+          // console.warn(`[fillDataTable] 在表格中未找到名为 "${apiKey}" 的字段，将跳过此数据项。`);
+        }
+      }
+
+      if (recordCells.length > 0) { //
+        recordsAsCells.push(recordCells);
+      }
+    }
+  } catch (error) {
+    console.error('[fillDataTable] 准备待添加记录时出错: ', error);
+    await ui.showToast({ toastType: ToastType.error, message: `数据准备失败: ${(error as Error).message.substring(0,100)}`});
+    return;
+  }
+
+
+  if (recordsAsCells.length > 0) { //
+    try { //
+      const BATCH_SIZE = 500; // SDK 建议的批量大小，但实际限制可能不同，通常不超过5000
+      for (let i = 0; i < recordsAsCells.length; i += BATCH_SIZE) { //
+        const chunk = recordsAsCells.slice(i, i + BATCH_SIZE); //
+        await table.addRecords(chunk); // 使用 ICell[][] 的重载
+      }
+      const tableName = await table.getName(); //
+      await ui.showToast({ toastType: ToastType.success, message: `成功向 "${tableName}" 添加 ${recordsAsCells.length} 条记录` }); //
+    } catch (error) { //
+      const tableName = await table.getName(); //
+      console.error(`[fillDataTable] 向表格 "${tableName}" 添加记录失败:`, error); //
+      await ui.showToast({ toastType: ToastType.error, message: `向 "${tableName}" 添加记录失败: ${(error as Error).message.substring(0,100)}` }); //
+    }
+  } else { //
+    console.warn('[fillDataTable] 没有可添加到表格的记录 (可能所有字段都不匹配或源数据为空)。'); //
+    await ui.showToast({ toastType: ToastType.info, message: '没有可写入表格的有效数据。' });
+  }
+}
+
+
+
+const formatVideoBasicPublishTime = (timeInput: string | number | null | undefined): string => {
+  if (timeInput === null || timeInput === undefined || timeInput === '') {
+    return '';
+  }
+  try {
+    const date = new Date(timeInput);
+    if (isNaN(date.getTime())) {
+      console.warn(`[formatVideoBasicPublishTime] 根据输入创建的日期无效: ${timeInput}`);
+      return String(timeInput); // 返回原始输入的字符串形式
+    }
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (error) {
+    console.error(`[formatVideoBasicPublishTime] 解析日期输入时出错: ${timeInput}`, error);
+    return String(timeInput); // 出错时返回原始输入的字符串形式
+  }
+};
+
+// 3. 转换函数：将 VideoBasicApiData 转换为 VideoBasicFormatted
+export function convertVideoBasicToFeishuFormat(data: VideoBasicApiData): VideoBasicFormatted {
+  return {
+    "标题": data.title,
+    "作者": data.authorName,
+    "描述": data.description,
+    "发布时间": formatVideoBasicPublishTime(data.publishTime),
+    "点赞数": data.likeCount,
+    "收藏数": data.collectCount,
+    "分享数": data.shareCount,
+    "评论数": data.commentCount,
+    "标签": data.tags,
+    "封面链接": data.coverUrl,
+    "视频链接": data.videoUrl,
+    "文案内容": data.content,
+  };
 }
