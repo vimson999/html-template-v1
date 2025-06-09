@@ -28,7 +28,7 @@ import {
   VideoBasicFormatted,
   KeyWordSearchFeishuFormattedItem
 } from './schema'; //
-// import './locales/i18n'; // 开启国际化，详情请看README.md
+import './locales/i18n'; // 开启国际化，详情请看README.md
 
 
 $(async function () { //
@@ -52,7 +52,6 @@ $(async function () { //
     await ui.showToast({ toastType: ToastType.info, message: "操作开始，正在处理..." }); //
 
     let wasTableDynamicallyCreated = false; //
-
     try { //
       const input_values = getFormValuesAndValidate(); //
       if (!input_values) { //
@@ -72,7 +71,6 @@ $(async function () { //
       }
 
       const dataToProcess = Array.isArray(apiResponse.result_data) ? apiResponse.result_data : [apiResponse.result_data]; //
-
       if (dataToProcess.length === 0 || (dataToProcess.length > 0 && (typeof dataToProcess[0] !== 'object' || dataToProcess[0] === null))) { //
         console.warn('[onClick] 处理后的数据为空或格式不正确。'); //
         await ui.showToast({ toastType: ToastType.warning, message: "未能获取到有效待处理数据" }); //
@@ -161,8 +159,8 @@ $(async function () { //
       // 'x-base-owner-id': contextInfo.baseOwnerID || ''
     };
 
-    const activeDomain = 'http://localhost:8083'; //
-    // const activeDomain = 'http://42.192.40.44:8083'
+    // const activeDomain = 'http://localhost:8083'; //
+    const activeDomain = 'http://42.192.40.44:8083'
     const host_base = activeDomain.startsWith('http') ? activeDomain : `http://${activeDomain}`; //
 
     let result_data_from_api; //

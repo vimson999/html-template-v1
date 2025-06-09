@@ -5,6 +5,7 @@ import jqueryI18next from 'jquery-i18next';
 import i18nextBrowserLanguageDetector from 'i18next-browser-languagedetector';
 import zh from './zh'
 import en from './en'
+import jp from './jp';
 
 // 国际化配置，详情请看README.md
 /** 语言方案 */
@@ -14,7 +15,10 @@ const resources = {
   },
   zh: {
     translation: zh
-  }
+  },
+  jp: {
+    translation: jp
+  }  
 }
 
 
@@ -27,7 +31,7 @@ $(function() {
     .use(i18nextBrowserLanguageDetector)
     .init({
       debug: true,
-      fallbackLng: 'en',
+      fallbackLng: 'zh',
       resources,
     }, (err) => {
       if (err) return console.error(err);

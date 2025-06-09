@@ -1,4 +1,26 @@
 export default {
-  title: '这是中文标题',
-  content: '这是中文内容{{num}}'
-}
+  title: '短视频数据侦探',
+  content: '这是中文内容{{num}}',
+  banner_title: '短视频数据侦探',
+  banner_subtitle: '基本信息/文案/作者信息/评论，支持dy,xhs,bili,ks',
+  form_title: '参数配置',
+  intent_select: '请选择获取的数据',
+  intent_select_basic: '基础信息 & 文案',
+  intent_select_comments: "视频评论信息", // 如果键名是合法的JS标识符，引号可选
+  intent_select_keyword_search: "关键字搜索信息",
+  intent_select_author_info: "视频作者基本信息",
+  intent_select_author_works: "视频作者作品信息",
+  label_input_value_instructions: "请输入-视频链接/作者链接/关键词",
+  placeholder_input_value: "视频链接/作者链接/关键词",
+  label_search_platform: "选择搜索平台",
+  platform_douyin: "抖音",
+  platform_xiaohongshu: "小红书",
+  label_target_table: "写入目标表格",
+  label_create_table: "新建表格",
+  label_select_existing_table: "选择已有表格",
+  label_select_existing_table_sr: "选择已有表格",
+  label_api_key: "请输入API Key",
+  placeholder_api_key: "免费Key，关注公众号[晓山青又清]",
+  button_execute_now: "立即执行",
+  link_view_guide: "查看使用指南"
+};
