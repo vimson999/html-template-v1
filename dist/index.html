@@ -5,53 +5,450 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Base Extensions</title>
-  <script type="module" crossorigin src="./assets/index.213a62d1.js"></script>
-  <link rel="stylesheet" href="./assets/index.46930d02.css">
+  <title data-i18n="title"></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ... (之前的 :root 和 body 样式保持不变) ... */
+    :root {
+      --primary-color: #007AFF;
+      --primary-color-dark: #005bb5;
+      --primary-color-light-gradient: #409CFF; /* For gradient */
+      --border-color: #D1D1D6;
+      --input-bg-color: #F9F9F9;
+      --text-color-primary: #1D1D1F;
+      --text-color-secondary: #636366;
+      --container-bg-color: #FFFFFF;
+      --body-bg-color: #F2F2F7;
+      --banner-text-color: #FFFFFF;
+      --border-radius: 8px;
+      --font-family-system: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --box-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+      font-family: var(--font-family-system);
+      background-color: var(--body-bg-color);
+      color: var(--text-color-primary);
+      margin: 0;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .plugin-main-area {
+      padding: 20px;
+      min-height: 100vh;
+      box-sizing: border-box;
+      display: flex; /* Use flexbox for centering */
+      flex-direction: column; /* Stack banner and form vertically */
+      align-items: center; /* Center children horizontally */
+    }
+
+    /* --- 新增 Banner 样式 --- */
+    .plugin-banner {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light-gradient) 100%);
+      color: var(--banner-text-color);
+      padding: 28px 24px; /* More vertical padding for banner */
+      border-radius: var(--border-radius); /* Consistent border radius */
+      text-align: center;
+      margin-bottom: 24px; /* Space between banner and form */
+      width: 100%; /* Take full width of parent's content area */
+      max-width: 500px; /* Match form-container max-width */
+      box-sizing: border-box;
+      box-shadow: var(--box-shadow-light); /* Subtle shadow for depth */
+    }
+
+    .banner-icon-area {
+      margin-bottom: 12px;
+    }
+
+    .banner-icon {
+      width: 40px; /* Adjust size as needed */
+      height: 40px;
+      stroke: var(--banner-text-color); /* Icon color */
+      opacity: 0.85;
+    }
+
+    .banner-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+    }
+
+    .banner-subtitle {
+      font-size: 15px;
+      font-weight: 400;
+      opacity: 0.9;
+      margin: 0;
+      line-height: 1.5;
+    }
+    /* --- Banner 样式结束 --- */
+
+
+    .form-container {
+      background-color: var(--container-bg-color);
+      padding: 24px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      width: 100%; /* Take full width of parent's content area */
+      max-width: 500px; /* Consistent max-width */
+      box-sizing: border-box;
+      /* margin: 0 auto; is handled by flex on parent now */
+    }
+
+    /* ... (其余的 .form-title, .form-group 等样式保持不变) ... */
+    .form-title {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-color-primary);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label-custom {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-color-secondary);
+      margin-bottom: 8px;
+    }
+
+    .form-control-custom,
+    .form-select-custom {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      background-color: var(--input-bg-color);
+      color: var(--text-color-primary);
+      box-sizing: border-box;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-control-custom::placeholder {
+      color: #A0A0A5; /* Lighter placeholder text */
+    }
+
+    .form-control-custom:focus,
+    .form-select-custom:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25); /* Focus ring */
+    }
+
+    .form-select-custom {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23636366'%3E%3Cpath d='M8 11.293l-4.646-4.647a.5.5 0 0 1 .708-.708L8 9.879l4.939-4.939a.5.5 0 1 1 .707.707L8 11.293z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 36px; /* Make space for the arrow */
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 20px;
+      margin-top: 8px;
+    }
+
+    .form-check-custom {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .form-check-input-custom {
+      opacity: 0;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+    }
+
+    .form-check-label-custom {
+      font-size: 15px;
+      color: var(--text-color-primary);
+      padding-left: 28px;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+    }
+
+    .form-check-label-custom::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border-color);
+      border-radius: 50%;
+      background-color: var(--input-bg-color);
+      transition: border-color 0.2s ease;
+    }
+
+    .form-check-label-custom::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 50%;
+      transform: translateY(-50%) scale(0);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+      transition: transform 0.2s ease;
+    }
+
+    .form-check-input-custom:checked + .form-check-label-custom::before {
+      border-color: var(--primary-color);
+    }
+
+    .form-check-input-custom:checked + .form-check-label-custom::after {
+      transform: translateY(-50%) scale(1);
+    }
+
+    .form-check-input-custom:focus + .form-check-label-custom::before {
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn-custom {
+      display: inline-block;
+      width: 100%;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 12px 20px;
+      border-radius: var(--border-radius);
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      margin-top: 10px;
+    }
+
+    .btn-primary-custom {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary-custom:hover {
+      background-color: var(--primary-color-dark);
+    }
+
+    .btn-primary-custom:active {
+      transform: scale(0.98);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    .plugin-help-link-container {
+      text-align: center; /* 链接居中显示 */
+      margin-top: 24px; /* 与上方表单容器的间距 */
+      margin-bottom: 20px; /* 与页面底部的间距 */
+      width: 100%;
+      max-width: 500px; /* 与表单容器和 Banner 宽度保持一致 */
+      box-sizing: border-box;
+    }
+
+    .plugin-help-link {
+      font-size: 14px;
+      color: var(--text-color-secondary); /* 使用次要文字颜色，不那么突出 */
+      text-decoration: none; /* 去除下划线 */
+      display: inline-flex; /* 让图标和文字在同一行并垂直居中 */
+      align-items: center;
+      transition: color 0.2s ease;
+    }
+
+    .plugin-help-link:hover {
+      color: var(--primary-color); /* 鼠标悬浮时使用主色调 */
+      text-decoration: underline; /* 鼠标悬浮时显示下划线，更明确是链接 */
+    }
+
+    .plugin-help-link .help-icon {
+      width: 16px; /* 图标大小 */
+      height: 16px;
+      margin-right: 6px; /* 图标与文字的间距 */
+      fill: currentColor; /* 使SVG图标颜色跟随文字颜色变化 */
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/index.b61aba24.js"></script>
+  <link rel="stylesheet" href="./assets/index.dd98705e.css">
 </head>
 
 <body>
-  <main class="main p-3 pt-4">
-    <h4 class="mb-3">Edit <code class="code">src/index.ts</code> and save to reload</h3>
+  <main class="plugin-main-area">
+    <header class="plugin-banner">
+      <div class="banner-icon-area">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="banner-icon">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+      <h1 class="banner-title" data-i18n="banner_title"></h1>
+      <!-- <p class="banner-subtitle">基本信息/文案/作者信息/评论/历史趋势，支持dy,xhs,ks,bili</p> -->
+      <p class="banner-subtitle" data-i18n="banner_subtitle"></p>
+    </header>
+
+    <div class="form-container">
+      <h2 class="form-title" data-i18n="form_title"></h2> 
       <form>
-        <div class="mb-3">
-          <label class="form-label">Development guide</label>
-          <div>
-            <a href="https://lark-technologies.larksuite.com/docx/HvCbdSzXNowzMmxWgXsuB2Ngs7d" target="_blank"
-              rel="noopener noreferrer">
-              Base Extensions Guide
-            </a>
-            、
-            <a href="https://bytedance.feishu.cn/docx/HazFdSHH9ofRGKx8424cwzLlnZc" target="_blank"
-              rel="noopener noreferrer">
-              多维表格插件开发指南
-            </a>
+        <div class="form-group">
+          <label for="intentSelect" class="form-label-custom" data-i18n="intent_select"></label>
+          <select id="intentSelect" class="form-select-custom">
+            <option value="基础文案" data-i18n="intent_select_basic"></option>
+            <!-- <option value="视频趋势">视频趋势</option> -->
+             <option value="评论" data-i18n="intent_select_comments"></option> 
+            <option value="关键字" data-i18n="intent_select_keyword_search"></option>
+            <option value="作者" data-i18n="intent_select_author_info"></option> 
+            <option value="作品集" data-i18n="intent_select_author_works"></option> 
+            <!-- <option value="作者趋势">视频作者数据走势数据</option> -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="inputValue" class="form-label-custom" data-i18n="label_input_value_instructions"></label>
+          <input id="inputValue" type="text" class="form-control-custom" data-i18n="[placeholder]placeholder_input_value" />
+          <!-- <label for="inputValue" class="form-label-custom">请输入-视频链接/作者链接/关键词</label>
+          <input id="inputValue" type="text" class="form-control-custom" placeholder="视频链接/作者链接/关键词" /> -->
+
+          <!-- <input id="inputValue" type="text" class="form-control-custom" placeholder="视频链接/作者链接/关键词" value="4.17 MWZ:/ y@G.Vl 04/18 日本进入滞胀！日元、韩元有可能暴力升值！ # 日本 # 美国 # 股票 # 金融  https://v.douyin.com/bLrXHG1U1v0/ 复制此链接，打开Dou音搜索，直接观看视频！"/> -->
+          <!-- <input id="inputValue" type="text" class="form-control-custom" placeholder="视频链接/作者链接/关键词" value="80 【青岛的首富是谁？青岛青岛旅游攻略青岛同城记录真实生活 - 旅行中的美姐 | 小红书 - 你的生活指南】 😆 7KX0WriS6CNmci2 😆 https://www.xiaohongshu.com/discovery/item/6815d8260000000021019522?source=webshare&xhsshare=pc_web&xsec_token=ABOPvW5WeeH_v9EDMZ3CHTyQDwQud1STRigDMvh9U9W9E=&xsec_source=pc_share"/> -->
+        </div>
+
+        <div class="form-group" id="searchPlatSelectGroup">
+          <!-- <label for="searchPlatSelect" class="form-label-custom">选择搜索平台</label>
+          <select id="searchPlatSelect" class="form-select-custom" aria-label="选择搜索平台">
+            <option value="douyin">抖音</option>
+            <option value="xiaohongshu">小红书</option>
+          </select> -->
+          <label for="searchPlatSelect" class="form-label-custom" data-i18n="label_search_platform"></label>
+          <select id="searchPlatSelect" class="form-select-custom" aria-label="选择搜索平台">
+            <option value="douyin" data-i18n="platform_douyin"></option>
+            <option value="xiaohongshu" data-i18n="platform_xiaohongshu"></option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <!-- <label class="form-label-custom">写入目标表格</label> -->
+          <label class="form-label-custom" data-i18n="label_target_table"></label>
+
+          <div class="radio-group">
+            <div class="form-check-custom">
+              <input class="form-check-input-custom" type="radio" name="tableOption" id="radioCreate" value="create" checked>
+              <!-- <label class="form-check-label-custom" for="radioCreate">新建表格</label> -->
+              <label class="form-check-label-custom" for="radioCreate" data-i18n="label_create_table"></label>
+            </div>
+            <div class="form-check-custom">
+              <input class="form-check-input-custom" type="radio" name="tableOption" id="radioSelect" value="select" >
+              <!-- <label class="form-check-label-custom" for="radioSelect">选择已有表格</label> -->
+              <label class="form-check-label-custom" for="radioSelect" data-i18n="label_select_existing_table"></label>
+            </div>
           </div>
+        </div> 
+
+        <div class="form-group" id="tableSelectGroup">
+          <!-- <label for="tableSelect" class="form-label-custom sr-only">选择已有表格</label> -->
+          <label for="tableSelect" class="form-label-custom sr-only" data-i18n="label_select_existing_table_sr"></label>
+          <select id="tableSelect" class="form-select-custom" aria-label="选择已有表格"></select>
         </div>
-        <div class="mb-3">
-          <label class="form-label">API</label>
-          <div>
-            <a href="https://lark-technologies.larksuite.com/docx/Y6IcdywRXoTYSOxKwWvuLK09sFe" target="_blank"
-              rel="noopener noreferrer">
-              Base Extensions Front-end API
-            </a>
-            、
-            <a href="https://bytedance.feishu.cn/docx/HjCEd1sPzoVnxIxF3LrcKnepnUf" target="_blank"
-              rel="noopener noreferrer">
-              多维表格插件API
-            </a>
-          </div>
+
+        <div class="form-group">
+          <!-- <label for="apiKey" class="form-label-custom">请输入API Key</label> -->
+          <label for="apiKey" class="form-label-custom" data-i18n="label_api_key"></label>
+
+          <!-- todo: 增加一个小提示的超链接，如何获取API Key，然后链接到我的帮助文档 -->
+          <!-- <a href="https://ycn0x2weafez.feishu.cn/wiki/TKjRwnvyNiNvMCkWiiDcoBIknzg" target="_blank" class="plugin-help-link">
+            <svg class="help-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M0 0h24v24H0z" fill="none"/>
+            </svg>
+          </a> -->
+          <!-- <input id="apiKey" type="text" class="form-control-custom" placeholder="请输入您的API Key"/> -->
+
+
+          <!-- <input id="apiKey" type="text" class="form-control-custom" placeholder="请输入您的API Key" value="50871805b4160a5f51b44b235e4f3c8eda33cebcb03f985544db72f3a1dac6ba"/> -->
+          <input id="apiKey" type="text" class="form-control-custom" data-i18n="[placeholder]placeholder_api_key"/>
+
         </div>
-        <div class="mb-3">
-          <label for="tableSelect" class="form-label">Select Table</label>
-          <select id='tableSelect' class="form-select"></select>
-        </div>
-        <button class='btn btn-outline-primary' type="button" id="addRecord">
-          Add Record
+
+        <!-- <button class='btn-custom btn-primary-custom' type="button" id="addRecord"> -->
+        <button class='btn-custom btn-primary-custom' type="button" id="addRecord" data-i18n="button_execute_now">
+          <!-- 立即执行 -->
         </button>
       </form>
+    </div>
+    <div class="plugin-help-link-container">
+      <a href="https://ycn0x2weafez.feishu.cn/wiki/TKjRwnvyNiNvMCkWiiDcoBIknzg" target="_blank" class="plugin-help-link">
+        <svg class="help-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M0 0h24v24H0z" fill="none"/>
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75c-.09.14-.2.27-.33.39-.63.59-1.23 1.1-1.66 1.75-.36.56-.58 1.18-.58 1.61h-2c0-.84.29-1.83.74-2.75.52-1.01 1.26-1.87 2.11-2.6.9-.8.98-1.37.98-2.11 0-.94-.65-1.64-1.73-1.64-.85 0-1.48.43-1.89.96l-1.42-1.42C9.01 6.41 10.36 5 12 5c1.85 0 3.25.97 3.73 2.51.26.82.37 1.52.37 2.14 0 .88-.33 1.77-1.03 2.6z"/>
+        </svg>
+
+        <span data-i18n="link_view_guide"></span> 
+        <!-- 查看使用指南 -->
+      </a>
+    </div>
   </main>
   
+  <script>
+    // ... (JavaScript 逻辑保持不变) ...
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('input[name="tableOption"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+          var group = document.getElementById('tableSelectGroup');
+          var tableSelect = document.getElementById('tableSelect');
+          if (this.value === 'create') {
+            group.style.display = 'none';
+            tableSelect.disabled = true;
+          } else {
+            group.style.display = '';
+            tableSelect.disabled = false;
+          }
+        });
+      });
+
+
+      //页面加载默认searchPlatSelectGroup不显示
+      document.getElementById('searchPlatSelectGroup').style.display = 'none';
+       //当intentSelect的选中值是【关键字】时，展示 searchPlatSelectGroup，否则就隐藏
+      document.getElementById('intentSelect').addEventListener('change', function () {
+        if (this.value === '关键字') {
+          document.getElementById('searchPlatSelectGroup').style.display = '';
+        } else {
+          document.getElementById('searchPlatSelectGroup').style.display = 'none';
+        }
+      });
+
+      
+      if (document.getElementById('radioSelect').checked) {
+        document.getElementById('tableSelectGroup').style.display = '';
+        document.getElementById('tableSelect').disabled = false;
+      } else {
+        document.getElementById('tableSelectGroup').style.display = 'none';
+        document.getElementById('tableSelect').disabled = true;
+      }
+    });
+  </script>
 </body>
 
 </html>
