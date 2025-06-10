@@ -160,7 +160,9 @@ $(async function () { //
     };
 
     // const activeDomain = 'http://localhost:8083'; //
-    const activeDomain = 'https://42.192.40.44:8083';
+    // const activeDomain = 'http://42.192.40.44:8083';
+
+    const activeDomain = 'https://www.xiaoshanqing.tech';
     const host_base = activeDomain.startsWith('http') ? activeDomain : `http://${activeDomain}`; //
 
     let result_data_from_api; //
